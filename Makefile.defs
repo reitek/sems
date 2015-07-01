@@ -28,11 +28,12 @@ RELEASE = $(SCM_REV)
 else
 REL_VERSION=$(VERSION).$(PATCHLEVEL).$(SUBLEVEL)
 RELEASE=$(REL_VERSION)$(EXTRAVERSION)
+NUMRELEASE=$(VERSION)$(PATCHLEVEL)$(SUBLEVEL)
 endif
 
 CPPFLAGS += -D_DEBUG \
 	  -D_THREAD_SAFE -D_REENTRANT \
-	  -DSEMS_VERSION='"$(RELEASE)"' -DARCH='"$(ARCH)"'\
+	  -DSEMS_VERSION='"$(RELEASE)"' -DSEMS_NUMVERSION='$(NUMRELEASE)' -DARCH='"$(ARCH)"'\
 	  -DOS='"$(OS)"' 	\
 #         -DMAX_RTP_SESSIONS=8192 \
 #	  -DSUPPORT_IPV6 \
@@ -76,7 +77,7 @@ CPPFLAGS += -D_DEBUG \
 # exclude some modules from compilation?
 # e.g. python modules:
 
-exclude_core_modules = sipctrl g729
+exclude_core_modules = sipctrl g729 speex
 #exclude_apps_modules = py_sems ivr mailbox pin_collect conf_auth mp3 examples
 
 # build in support for monitoring?
