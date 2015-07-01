@@ -111,6 +111,7 @@ public:
 
   static void postConferenceEvent(const string& cid, int event_id, 
 				  const string& sess_id);
+  static void postEventToAllParties(const string& cid, AmEvent* eventToSend,const string& sessionToExclude);
 
   static size_t getConferenceSize(const string& cid);
 };

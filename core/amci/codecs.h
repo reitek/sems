@@ -55,6 +55,5 @@
 #define CODEC_L16     12
 
 #define CODEC_G722_NB 13
-
 #define CODEC_G729    14
 #endif

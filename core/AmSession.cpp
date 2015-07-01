@@ -74,7 +74,12 @@ AmSession::AmSession()
   : AmEventQueue(this),
     dlg(this),
     detached(true),
-    sess_stopped(false),negotiate_onreply(false),
+    sess_stopped(false),
+    #if SEMS_NUMVERSION < 140
+    rtp_str(this),
+    #endif
+    negotiate_onreply(false),
+    m_ACKwithSDP(false),
     input(0), output(0), local_input(0), local_output(0),
     m_dtmfDetector(this), m_dtmfEventQueue(&m_dtmfDetector),
     m_dtmfDetectionEnabled(true),
@@ -852,7 +857,7 @@ void AmSession::onSipRequest(const AmSipRequest& req)
       dlg.reply(req,e.code, e.reason, e.hdrs);
     }
 
-    if(detached.get() && !getStopped()){
+    if(detached.get() && !getStopped() && !m_ACKwithSDP){
 	
       onSessionStart(req);
 	    
@@ -882,10 +887,31 @@ void AmSession::onSipRequest(const AmSipRequest& req)
     } else {
       dlg.reply(req, 415, "Unsupported Media Type");
     }
-  } else if (req.method == SIP_METH_PRACK) {
-    // TODO: SDP
-    dlg.reply(req, 200, "OK");
-    // TODO: WARN: only include latest SDP if req.rseq == dlg.rseq (latest 1xx)
+  } else if (req.method == "ACK" ) {
+	if (m_ACKwithSDP) {
+		if (req.body.empty()){
+			ERROR("Expecting an ACK with SDP");
+		}
+		#if SEMS_NUMVERSION < 140
+		rtp_str.setMonitorRTPTimeout(true);
+		#else
+		RTPStream()->setMonitorRTPTimeout(true);
+		#endif
+		acceptAudio(req.body,req.hdrs);
+
+		if(!getStopped()){
+	    
+			onSessionStart(req);
+		  
+			if(input || output || local_input || local_output)
+				AmMediaProcessor::instance()->addSession(this,
+						       callgroup); 
+			else { 
+			DBG("no audio input and output set. "
+			"Session will not be attached to MediaProcessor.\n");
+	    }
+	  }
+	}
   }
 }
 
@@ -1017,11 +1043,27 @@ void AmSession::onAudioEvent(AmAudioEvent* audio_ev)
 
 void AmSession::onInvite(const AmSipRequest& req)
 {
-  try {
-    string sdp_reply;
-
-    acceptAudio(req.body,req.hdrs,&sdp_reply);
-    if(dlg.reply(req,200,"OK",
+	try {
+		string sdp_reply;
+		if (req.body.empty())
+		{
+			INFO("INVITE without SDP");
+			m_ACKwithSDP = true;
+			// Set local IP first, so that IP is set when 
+			// getLocalPort/setLocalPort may bind.
+			#if SEMS_NUMVERSION < 140 
+			rtp_str.setLocalIP(AmConfig::LocalIP);
+			sdp.genRequest(advertisedIP(), rtp_str.getLocalPort(), sdp_reply);
+			#else
+			RTPStream()->setLocalIP(localRTPIP());
+			sdp.genRequest(advertisedIP(), RTPStream()->getLocalPort(), sdp_reply);
+			#endif
+		}
+		else
+		{
+			acceptAudio(req.body,req.hdrs,&sdp_reply);
+		}
+		if(dlg.reply(req,200,"OK",
 		 SIP_APPLICATION_SDP, sdp_reply) != 0)
       throw AmSession::Exception(500,"could not send response");
 	

@@ -99,7 +99,7 @@ int SipCtrlInterface::load()
 	    log_parsed_messages?"yes":"no");
 
 	if (cfg.hasParameter("udp_rcvbuf")) {
-	    unsigned int config_udp_rcvbuf = -1;
+	    unsigned int config_udp_rcvbuf = (unsigned int) -1;
 	    if (str2i(cfg.getParameter("udp_rcvbuf"), config_udp_rcvbuf)) {
 		ERROR("invalid value specified for udp_rcvbuf\n");
 		return false;
@@ -715,7 +715,7 @@ void SipCtrlInterface::prepare_routes_uac(const list<sip_header*>& routes, strin
     
     while(true) {
 	
-	if(++it_re == route->elmts.rend()){
+	if(++it_re == (list<route_elmt*>::const_reverse_iterator) route->elmts.rend()){
 	    if(++it_rh == routes.rend()){
 		DBG("route_field = [%s]\n",route_field.c_str());
 		return;

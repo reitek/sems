@@ -100,6 +100,58 @@ void AmConferenceStatus::postConferenceEvent(const string& cid,
   cid2s_mut.unlock();
 }
 
+void AmConferenceStatus::postEventToAllParties(const string& cid, AmEvent* eventToSend,const string& sessionToExclude = "")
+{
+	DBG("AmConferenceStatus::postEventToAllParties");
+
+	AmDtmfEvent* dtmf_ev = dynamic_cast<AmDtmfEvent*>(eventToSend);	
+	if (dtmf_ev == NULL)
+	{
+		ERROR("eventToSend is not a AmDtmfEvent");
+		return;
+	}
+
+	AmConferenceStatus*  st = 0;
+  //DBG("Conference %s has %d parties\n",st->conf_id.c_str(),getConferenceSize(st->conf_id));
+  cid2s_mut.lock();
+  DBG("cid2s_mut.lock");
+  std::map<std::string,AmConferenceStatus*>::iterator it = cid2status.find(cid);
+
+  if(it != cid2status.end()){
+
+    st = it->second;
+  }
+  else {
+	
+    st = new AmConferenceStatus(cid);
+    cid2status[cid] = st;
+  }
+
+  st->sessions_mut.lock();
+  DBG("st->sessions_mut.lock");
+  for(std::map<std::string, unsigned int>::iterator its = st->sessions.begin(); 
+	  its != st->sessions.end(); its++)
+  {
+	if (its->first != sessionToExclude)
+	{
+		AmDtmfEvent* evtToPost = new AmDtmfEvent(dtmf_ev->event(), dtmf_ev->duration());
+		evtToPost->processed=true;
+
+		AmSessionContainer::instance()->postEvent( its->first,evtToPost);
+	}
+	else
+	{
+		DBG("Exclude session: %s\n",its->first.c_str());
+	}
+  }
+  st->sessions_mut.unlock();
+  DBG("st->sessions_mut.unlock");
+  cid2s_mut.unlock();
+  DBG("cid2s_mut.unlock");
+
+  delete eventToSend;
+}
+
 void AmConferenceStatus::releaseChannel(const string& cid, unsigned int ch_id)
 {
   cid2s_mut.lock();

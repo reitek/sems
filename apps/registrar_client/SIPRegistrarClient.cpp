@@ -107,7 +107,7 @@ void SIPRegistration::doRegistration()
     //else 
     //    dlg.outbound_proxy = "";
     
-    if (dlg.sendRequest(req.method, "", "", "Expires: 1000\n") < 0)
+    if (dlg.sendRequest(req.method, "", "", "Expires: 180\n") < 0)
       ERROR("failed to send registration.\n");
     
     // save TS
@@ -402,7 +402,7 @@ void SIPRegistration::onSipReply(const AmSipReply& reply, int old_dlg_status, co
 	}
 	server_contact.dump();
 				
-	if (server_contact.isEqual(local_contact)) {
+	if (server_contact.isEqual(local_contact) || 1) {
 	  DBG("contact found\n");
 	  found = active = true;
 	  //bool str2i(const string& str, unsigned int& result);

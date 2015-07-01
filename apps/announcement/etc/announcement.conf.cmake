@@ -12,4 +12,4 @@ default_announce=default_en.wav
 #  set to "true" to make the announcement loop
 #  (indefinitely)
 #
-# loop=true
+ loop=true

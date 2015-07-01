@@ -409,11 +409,13 @@ void ConferenceDialog::onSessionStart(const AmSipRequest& req)
   string lonely_user_file;
 
   string app_param_hdr = getHeader(req.hdrs, PARAM_HDR, true);
+  string listen_only_str = "";
   if (app_param_hdr.length()) {
     from_header = get_header_keyvalue(app_param_hdr, "Dialout-From");
     extra_headers = get_header_keyvalue(app_param_hdr, "Dialout-Extra");
     dialout_suffix = get_header_keyvalue(app_param_hdr, "Dialout-Suffix");      
     language = get_header_keyvalue(app_param_hdr, "Language");      
+    listen_only_str = get_header_keyvalue(app_param_hdr, "Listen-Only");
   } else {
     from_header = getHeader(req.hdrs, "P-Dialout-From", true);
     extra_headers = getHeader(req.hdrs, "P-Dialout-Extra", true);
@@ -447,6 +449,12 @@ void ConferenceDialog::onSessionStart(const AmSipRequest& req)
   }
     
   allow_dialout = dialout_suffix.length() > 0;
+
+  listen_only = listen_only_str.length() > 0;
+
+  if (listen_only) {
+    DBG("This user must be in listen only mode");
+  }
 
   if (!language.empty()) {
 
@@ -514,15 +522,19 @@ void ConferenceDialog::setupAudio()
   if(dialout_channel.get()){
 
     DBG("adding dialout_channel to the playlist (dialedout = %i)\n",dialedout);
-    play_list.addToPlaylist(new AmPlaylistItem(dialout_channel.get(),
-					       dialout_channel.get()));
+    if (listen_only)
+      play_list.addToPlaylist(new AmPlaylistItem(dialout_channel.get(), (AmAudio*)NULL));
+    else
+      play_list.addToPlaylist(new AmPlaylistItem(dialout_channel.get(), dialout_channel.get()));
   }
   else {
 
     channel.reset(AmConferenceStatus::getChannel(conf_id,getLocalTag()));
 
-    play_list.addToPlaylist(new AmPlaylistItem(channel.get(),
-					       channel.get()));
+    if (listen_only)
+      play_list.addToPlaylist(new AmPlaylistItem(channel.get(), (AmAudio*)NULL));
+    else
+      play_list.addToPlaylist(new AmPlaylistItem(channel.get(), channel.get()));
   }
 
   setInOut(&play_list,&play_list);
@@ -662,6 +674,14 @@ void ConferenceDialog::process(AmEvent* ev)
 
     return;
   }
+ #if SEMS_NUMVERSION >= 140 
+  AmDtmfEvent* dtmf_ev = dynamic_cast<AmDtmfEvent*>(ev);
+  if(dtmf_ev && dtmf_ev->processed){
+	DBG("Received a DTMF event %d with duration %d - locaTag %s\n",dtmf_ev->event(),dtmf_ev->duration(), getLocalTag().c_str());
+	sendDtmf(dtmf_ev->event(),dtmf_ev->duration());
+	return;
+  }
+#endif
 
   AmSession::process(ev);
 }
@@ -691,6 +711,12 @@ void ConferenceDialog::onDtmf(int event, int duration)
 	ConferenceFactory::MaxParticipants)))
     return;
 
+  #if SEMS_NUMVERSION >= 140
+  AmDtmfEvent * dtmfEvent = new AmDtmfEvent(event, duration);
+  dtmfEvent->processed=true;
+  AmConferenceStatus::postEventToAllParties(conf_id,dtmfEvent,getLocalTag());
+  return;
+  #endif 
   switch(state){
 	
   case CS_normal:
@@ -860,8 +886,32 @@ void ConferenceDialog::closeChannels()
 void ConferenceDialog::onSipRequest(const AmSipRequest& req)
 {
   AmSession::onSipRequest(req);
-  if((dlg.getStatus() >= AmSipDialog::Connected) ||
-     (req.method != "REFER"))
+
+  if (req.method == "INFO"|| req.method == "OPTIONS" )
+  {
+		// send ringing event
+	//	AmSessionContainer::instance()->postEvent(conf_id, new DialoutConfEvent(DoConfRinging, conf_id));
+	DBG("ConferenceDialiog:onSipRequest: play ringTone");
+	string status = getHeader(req.hdrs, "X-2X-Status");
+	if (status.compare("180") == 0)
+	{
+		DBG("Recvd status: %s", status.c_str());
+		if(!RingTone.get())
+	 		RingTone.reset(new AmRingTone(0,2000,4000,440,480)); // US
+
+		DBG("adding ring tone to the playlist (dialedout = %i)\n",dialedout);
+		play_list.close();
+		play_list.addToPlaylist(new AmPlaylistItem(RingTone.get(),NULL));
+	}
+	else //if (status.compare("200") == 0)
+	{
+		connectMainChannel();
+	}
+	dlg.reply(req,200,"OK","");
+	
+	return;
+  }
+   if((dlg.getStatus() >= AmSipDialog::Connected) || (req.method != "REFER" && req.method != "NOTIFY" ))
     return;
 
   std::swap(dlg.local_party,dlg.remote_party);

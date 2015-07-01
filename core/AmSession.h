@@ -89,6 +89,7 @@ class AmSession :
 protected:
   vector<SdpPayload *>  m_payloads;
   bool         negotiate_onreply;
+  bool			m_ACKwithSDP;
 
   friend class AmRtpAudio;
 
@@ -484,6 +485,11 @@ public:
   /* ---------- event handlers ------------------------- */
 
   /** DTMF event handler for apps to use*/
+ /**
+   * send a DTMF as RTP payload (RFC4733)
+   * @param event event ID (e.g. key press), see rfc
+   * @param duration_ms duration in milliseconds
+   */
   virtual void onDtmf(int event, int duration);
 
   /**
