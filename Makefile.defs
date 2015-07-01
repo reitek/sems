@@ -3,13 +3,13 @@ else
 makefile_defs="1"
 export makefile_defs
 
-GIT := $(shell which git)
+#GIT := $(shell which git)
 
-ifneq ($(GIT),)
-   SCM_REV := $(shell if git --help describe |grep dirty 2>&1 >/dev/null ; \
-        then git describe --always --dirty 2>/dev/null; \
-        else git describe --always 2>/dev/null; fi)
-endif
+#ifneq ($(GIT),)
+#   SCM_REV := $(shell if git --help describe |grep dirty 2>&1 >/dev/null ; \
+#        then git describe --always --dirty 2>/dev/null; \
+#        else git describe --always 2>/dev/null; fi)
+#endif
 
 #version number
 VERSION = 1
@@ -75,8 +75,8 @@ USE_INTERNAL_RESAMPLER = yes
 # exclude some modules from compilation?
 # e.g. python modules:
 
-exclude_core_modules = g729 silk
-#exclude_apps_modules = py_sems ivr mailbox pin_collect conf_auth mp3 examples
+exclude_core_modules = g729 silk speex
+exclude_app_modules = ann_b2b announcement announce_transfer annrecorder callback click2dial conf_auth conference db_reg_agent diameter_client dsm early_announce examples gateway ivr jsonrpc mailbox monitoring msg_storage mwi pin_collect precoded_announce py_sems rtmp sbc twit voicebox voicemail webconference xmlrpc2di examples/tutorial/cc_acc
 
 # build in support for monitoring?
 #
